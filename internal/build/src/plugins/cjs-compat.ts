@@ -129,11 +129,17 @@ export function cjsCompatPlugin(param: CjsCompatPluginOptions = {}): Plugin {
           const topLevelPath = fileName.split("/")[0];
           pathsToEmit.add(topLevelPath);
           if (options.mode === "generate") {
-            this.emitFile({
-              type: "asset",
-              fileName: `../${fileName}`,
-              source,
-            });
+            // Write directly to the filesystem instead of using
+            // this.emitFile — rolldown 1.0.0-rc.3+ rejects relative
+            // paths like `../${fileName}` in emitFile's fileName.
+            const target = path.resolve(
+              process.env.INIT_CWD ?? "",
+              fileName
+            );
+            if (isSafeProjectPath(target)) {
+              await fs.mkdir(path.dirname(target), { recursive: true });
+              await fs.writeFile(target, source);
+            }
           }
           if (options.mode === "clean") {
             const target = path.resolve(`./${fileName}`);
